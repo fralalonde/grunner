@@ -1,0 +1,114 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Grunner
+  license:
+    name: MIT
+#servers:
+#  - url: http://grunner.io/v1
+paths:
+  /jobs:
+    get:
+      summary: List all jobs for user
+      operationId: listJobs
+      tags:
+        - list
+        - jobs
+      parameters:
+        - name: status
+          in: query
+          description: Only list jobs of specified status
+          required: false
+          schema:
+            $ref: '#/components/schemas/JobStatus'
+      responses:
+        200:
+          description: The list of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobSummary"
+        default:
+          description: An error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      summary: Create a job
+      operationId: createJob
+      tags:
+        - create
+        - jobs
+      responses:
+        204:
+          description: ID of new job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobId"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+#  /jobs/{jobId}:
+#    get:
+#      summary: Info for a specific job
+#      operationId: showJobById
+#      tags:
+#        - jobs
+#      parameters:
+#        - name: jobId
+#          in: path
+#          required: true
+#          description: The id of the job to retrieve
+#          schema:
+#            type: string
+#      responses:
+#        200:
+#          description: Expected response to a valid request
+#          content:
+#            application/json:
+#              schema:
+#                $ref: "#/components/schemas/Jobs"
+#        default:
+#          content:
+#            application/json:
+#              schema:
+#                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+    JobId:
+      description: Unique identifier of a job
+      type: string
+    JobStatus:
+      type: string
+      description: Status of a job
+      enum:
+        - Pending
+        - Cancelled
+        - Executing
+        - Failed
+        - Completed
+    JobSummary:
+      properties:
+        id:
+          $ref: '#/components/schemas/JobId'
+        status:
+          $ref: '#/components/schemas/JobStatus'
+#    JobInfo:
+#      type: array
+#      items:
+#        $ref: "#/components/schemas/Job"
+    Error:
+      description: Summary error
+      properties:
+        message:
+          type: string
