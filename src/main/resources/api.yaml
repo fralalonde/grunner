@@ -31,11 +31,11 @@ paths:
                 items:
                   $ref: "#/components/schemas/JobSummary"
         default:
-          description: The error summary
+          description: The error detail
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: "#/components/schemas/ErrorDetail"
     post:
       summary: Create a job
       operationId: createJob
@@ -55,13 +55,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/JobId"
+                $ref: "#/components/schemas/JobSummary"
         default:
-          description: The error summary
+          description: The error detail
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
+                $ref: "#/components/schemas/ErrorDetail"
 
 components:
   schemas:
@@ -100,7 +100,7 @@ components:
             owner:
               description: Username of the submitter
               type: string
-    Error:
+    ErrorDetail:
       description: Summary error
       properties:
         message:

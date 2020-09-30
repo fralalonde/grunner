@@ -8,6 +8,7 @@ class GrunnerAppTests {
 
     @Test
     void contextLoads() {
+        // this smoke test starts the app and initializes the spring context
     }
 
 }

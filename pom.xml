@@ -8,7 +8,13 @@
 	<properties>
 		<java.version>11</java.version>
 		<springfox-version>2.9.2</springfox-version>
+		<lombok.version>1.18.12</lombok.version>
+		<db.schema>GRUNNER</db.schema>
+		<db.url>jdbc:h2:~/${db.schema}</db.url>
+		<db.username>sa</db.username>
+		<org.mapstruct.version>1.4.0.Final</org.mapstruct.version>
 	</properties>
+
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
@@ -59,6 +65,62 @@
 			</plugin>
 
 			<plugin>
+				<groupId>org.flywaydb</groupId>
+				<artifactId>flyway-maven-plugin</artifactId>
+				<version>6.5.3</version>
+
+				<executions>
+					<execution>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>migrate</goal>
+						</goals>
+					</execution>
+				</executions>
+
+				<configuration>
+					<url>${db.url}</url>
+					<user>${db.username}</user>
+					<cleanOnValidationError>true</cleanOnValidationError>
+					<locations>
+						<location>filesystem:src/main/resources/db/migration</location>
+					</locations>
+				</configuration>
+			</plugin>
+
+<!--			<plugin>
+				<groupId>org.jooq</groupId>
+				<artifactId>jooq-codegen-maven</artifactId>
+				<version>3.13.4</version>
+
+				<executions>
+					<execution>
+						<phase>generate-sources</phase>
+						<goals>
+							<goal>generate</goal>
+						</goals>
+					</execution>
+				</executions>
+
+				<configuration>
+					<jdbc>
+						<url>${db.url}</url>
+						<user>${db.username}</user>
+					</jdbc>
+					<generator>
+						<database>
+							<includes>.*</includes>
+							<inputSchema>${db.schema}</inputSchema>
+						</database>
+						<target>
+							<packageName>org.jooq.example.flyway.db.h2</packageName>
+							<directory>target/generated-sources/jooq-h2</directory>
+						</target>
+					</generator>
+				</configuration>
+			</plugin>-->
+
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
@@ -82,6 +144,18 @@
 						<!-- disable pedantic try-with-resource unreferenced warnings -->
 						<arg>-Xlint:-try</arg>
 					</compilerArgs>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.mapstruct</groupId>
+							<artifactId>mapstruct-processor</artifactId>
+							<version>${org.mapstruct.version}</version>
+						</path>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</path>
+					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 
@@ -137,16 +211,16 @@
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>
-
 		</dependencies>
 	</dependencyManagement>
 
 
 	<dependencies>
+		<!-- dev & test dependencies -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
-			<version>1.18.12</version>
+			<version>${lombok.version}</version>
 			<scope>provided</scope>
 		</dependency>
 
@@ -168,7 +242,7 @@
 			<scope>test</scope>
 		</dependency>
 
-		<!-- https://mvnrepository.com/artifact/org.codehaus.groovy/groovy-jsr223 -->
+		<!-- feature compile dependencies -->
 		<dependency>
 			<groupId>org.codehaus.groovy</groupId>
 			<artifactId>groovy-jsr223</artifactId>
@@ -177,6 +251,34 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.flywaydb</groupId>
+			<artifactId>flyway-core</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-jooq</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<version>1.4.177</version>
+		</dependency>
+
+
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct</artifactId>
+			<version>${org.mapstruct.version}</version>
 		</dependency>
 
 		<!-- copied from openapi-codegen -->
