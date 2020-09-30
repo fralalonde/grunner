@@ -31,18 +31,24 @@ paths:
                 items:
                   $ref: "#/components/schemas/JobSummary"
         default:
-          description: An error
+          description: The error summary
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-
     post:
       summary: Create a job
       operationId: createJob
       tags:
         - create
         - jobs
+      requestBody:
+        description: The script to execute
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
       responses:
         204:
           description: ID of new job
@@ -51,37 +57,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/JobId"
         default:
-          description: unexpected error
+          description: The error summary
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-
-#  /jobs/{jobId}:
-#    get:
-#      summary: Info for a specific job
-#      operationId: showJobById
-#      tags:
-#        - jobs
-#      parameters:
-#        - name: jobId
-#          in: path
-#          required: true
-#          description: The id of the job to retrieve
-#          schema:
-#            type: string
-#      responses:
-#        200:
-#          description: Expected response to a valid request
-#          content:
-#            application/json:
-#              schema:
-#                $ref: "#/components/schemas/Jobs"
-#        default:
-#          content:
-#            application/json:
-#              schema:
-#                $ref: "#/components/schemas/Error"
 
 components:
   schemas:
@@ -90,7 +70,7 @@ components:
       type: string
     JobStatus:
       type: string
-      description: Status of a job
+      description: Possible states of a job
       enum:
         - Pending
         - Cancelled
@@ -98,17 +78,39 @@ components:
         - Failed
         - Completed
     JobSummary:
+      description: Summary description of a job
       properties:
         id:
           $ref: '#/components/schemas/JobId'
         status:
           $ref: '#/components/schemas/JobStatus'
-#    JobInfo:
-#      type: array
-#      items:
-#        $ref: "#/components/schemas/Job"
+    JobInfo:
+      description: All info of a job
+      allOf:
+        - $ref: '#/components/schemas/JobSummary'
+        - type: object
+          properties:
+            submitDate:
+              description: The time at which the job was submitted
+              type: string
+              format: date-time
+            script:
+              description: The script to execute
+              type: string
+            owner:
+              description: Username of the submitter
+              type: string
     Error:
       description: Summary error
       properties:
         message:
           type: string
+  securitySchemes:
+    BasicAuth:
+      type: http
+      scheme: basic
+
+security:
+  - BasicAuth:
+      - read
+      - write

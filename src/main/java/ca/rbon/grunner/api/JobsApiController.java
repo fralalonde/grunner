@@ -2,6 +2,8 @@ package ca.rbon.grunner.api;
 
 import ca.rbon.grunner.api.model.JobStatus;
 import ca.rbon.grunner.api.model.JobSummary;
+import ca.rbon.grunner.state.JobRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,16 +19,23 @@ import java.util.Optional;
 @RequestMapping("${openapi.grunner.base-path:}")
 public class JobsApiController implements JobsApi {
 
-    private final NativeWebRequest request;
+    final NativeWebRequest request;
 
-    @org.springframework.beans.factory.annotation.Autowired
-    public JobsApiController(NativeWebRequest request) {
+    final JobRepository jobRepository;
+
+    public JobsApiController(NativeWebRequest request, JobRepository jobRepository) {
         this.request = request;
+        this.jobRepository = jobRepository;
     }
 
     @Override
-    public ResponseEntity<String> createJob() {
-        return null;
+    public ResponseEntity<String> createJob(@Valid String body) {
+        var user = request.getRemoteUser();
+        var id = jobRepository.appendJob(user, body);
+
+        return ResponseEntity
+                .status(HttpStatus.ACCEPTED)
+                .body(id.toString());
     }
 
     @Override
