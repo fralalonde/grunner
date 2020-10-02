@@ -14,27 +14,30 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @EnableWebSecurity
 public class AppSecurityConfig extends WebSecurityConfigurerAdapter {
 
-    @Override
-    protected void configure(HttpSecurity httpSecurity) throws Exception {
-        httpSecurity.csrf().disable()
-                .authorizeRequests().anyRequest().authenticated()
-                .and().httpBasic();
-    }
+  @Override
+  protected void configure(HttpSecurity httpSecurity) throws Exception {
+    httpSecurity
+        .csrf().disable()
+        .authorizeRequests()
+        .anyRequest().authenticated()
+        .and()
+        .httpBasic();
+  }
 
-    @Autowired
-    public void configureGlobal(AuthenticationManagerBuilder authentication) throws Exception {
-        authentication.inMemoryAuthentication()
-                .withUser("user")
-                .password(passwordEncoder().encode("secret"))
-                .roles("USER")
-                .and()
-                .withUser("admin")
-                .password("SECRET")
-                .roles("ADMIN");
-    }
+  @Autowired
+  public void configureGlobal(AuthenticationManagerBuilder authentication) throws Exception {
+    authentication.inMemoryAuthentication()
+        .withUser("user")
+        .password(passwordEncoder().encode("secret"))
+        .roles("USER")
+        .and()
+        .withUser("admin")
+        .password("SECRET")
+        .roles("ADMIN");
+  }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
 }

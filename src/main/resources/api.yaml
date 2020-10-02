@@ -7,41 +7,29 @@ info:
 #servers:
 #  - url: http://grunner.io/v1
 paths:
-  /jobs:
+  /batches:
     get:
-      summary: List all jobs for user
-      operationId: listJobs
-      tags:
-        - list
-        - jobs
+      summary: List user's batch & latest status
+      operationId: listBatchs
       parameters:
         - name: status
           in: query
-          description: Only list jobs of specified status
+          description: Only list batches of specified status
           required: false
           schema:
-            $ref: '#/components/schemas/JobStatus'
+            $ref: '#/components/schemas/BatchStatus'
       responses:
         200:
-          description: The list of jobs
+          description: The list of (matching) batches
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/JobSummary"
-        default:
-          description: The error detail
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorDetail"
+                  $ref: "#/components/schemas/BatchStatusUpdate"
     post:
-      summary: Create a job
-      operationId: createJob
-      tags:
-        - create
-        - jobs
+      summary: Submit a new batch
+      operationId: enqueueBatch
       requestBody:
         description: The script to execute
         required: true
@@ -50,61 +38,68 @@ paths:
             schema:
               type: string
       responses:
+        202:
+          description: Unique identifier of new batch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchId"
+        400:
+          description: The script was not syntactically valid
+  /batches/{batchId}:
+    delete:
+      summary: Cancel a batch
+      operationId: cancelBatch
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          description: Id of batch to cancel
+          schema:
+            $ref: '#/components/schemas/BatchId'
+      responses:
         204:
-          description: ID of new job
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/JobSummary"
-        default:
-          description: The error detail
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorDetail"
+          description: Batch was cancelled
+        403:
+          description: Batch was not 'Pending' and could not cancelled
+        404:
+          description: Specified batch could not be found within user scope
 
 components:
   schemas:
-    JobId:
-      description: Unique identifier of a job
+    BatchId:
+      description: Unique identifier of a batch
       type: string
-    JobStatus:
+    BatchStatus:
       type: string
-      description: Possible states of a job
+      description: Possible states of a batch
       enum:
         - Pending
-        - Cancelled
         - Executing
-        - Failed
         - Completed
-    JobSummary:
-      description: Summary description of a job
+        - Cancelled
+        - Failed
+    BatchInfo:
+      description: All info of a batch
       properties:
         id:
-          $ref: '#/components/schemas/JobId'
-        status:
-          $ref: '#/components/schemas/JobStatus'
-    JobInfo:
-      description: All info of a job
-      allOf:
-        - $ref: '#/components/schemas/JobSummary'
-        - type: object
-          properties:
-            submitDate:
-              description: The time at which the job was submitted
-              type: string
-              format: date-time
-            script:
-              description: The script to execute
-              type: string
-            owner:
-              description: Username of the submitter
-              type: string
-    ErrorDetail:
-      description: Summary error
-      properties:
-        message:
+          $ref: '#/components/schemas/BatchId'
+        script:
+          description: The script to execute
           type: string
+        owner:
+          description: Username of the submitter
+          type: string
+    BatchStatusUpdate:
+      properties:
+        batch-id:
+          $ref: '#/components/schemas/BatchId'
+        status:
+          $ref: '#/components/schemas/BatchStatus'
+        timestamp:
+          description: The time at which the batch was submitted
+          type: string
+          format: date-time
   securitySchemes:
     BasicAuth:
       type: http
