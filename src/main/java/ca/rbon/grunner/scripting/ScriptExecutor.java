@@ -1,29 +1,35 @@
 package ca.rbon.grunner.scripting;
 
-import ca.rbon.grunner.api.BatchesApiController;
 import ca.rbon.grunner.state.BatchDAO;
+import ca.rbon.grunner.state.Transients;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
 import javax.script.ScriptException;
 
-import static ca.rbon.grunner.api.model.BatchStatus.PENDING;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+
+import static ca.rbon.grunner.db.enums.BatchEventStatus.COMPLETED;
+import static ca.rbon.grunner.db.enums.BatchEventStatus.FAILED;
 
 @Component
 public class ScriptExecutor {
 
-  static final Logger LOG = LoggerFactory.getLogger(BatchesApiController.class);
+  static final Logger LOG = LoggerFactory.getLogger(ScriptExecutor.class);
 
   final ScriptMachine scriptMachine;
 
   final BatchDAO batchDAO;
 
-  final TaskExecutor pool;
+  final ThreadPoolTaskExecutor pool;
 
-  public ScriptExecutor(ScriptMachine scriptMachine, BatchDAO batchDAO, TaskExecutor pool) {
+  private LocalDateTime prevBatchTime = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC);
+
+  public ScriptExecutor(ScriptMachine scriptMachine, BatchDAO batchDAO, ThreadPoolTaskExecutor pool) {
     this.scriptMachine = scriptMachine;
     this.batchDAO = batchDAO;
     this.pool = pool;
@@ -32,27 +38,28 @@ public class ScriptExecutor {
   @Scheduled(fixedDelay = 3000)
   public void run() throws InterruptedException {
     while (true) {
-      var nextPending = batchDAO.nextPendingBatch();
+      var nextPending = batchDAO.nextPendingBatch(prevBatchTime);
       if (!nextPending.isPresent()) {
+        // TODO make configurable
+        Thread.sleep(1000);
         LOG.debug("No pending batch, waiting");
       } else {
-        while (nextPending.isPresent() && !Thread.interrupted()) {
-          var batch = nextPending.get();
-          pool.execute(() -> {
-            try {
-              LOG.info("Executing batch '{}' for owner '{}'", batch.getId(), batch.getOwner());
-              scriptMachine.eval(batch.getScript());
-              // TODO capture & save result
-            } catch (ScriptException e) {
-              LOG.info("Executing batch '{}' for owner '{}'", batch.getId(), batch.getOwner());
-              // TODO capture & save error to rec
-            }
-          });
-          nextPending = batchDAO.nextPendingBatch();
-        }
+        // TODO clean up optionals
+        var event = nextPending.get();
+        var batch = batchDAO.getBatch(event.getBatchId()).get();
+
+        pool.execute(() -> {
+          try {
+            LOG.info("Executing batch '{}' for owner '{}'", batch.getBatchId(), batch.getOwner());
+            Object results = scriptMachine.eval(batch.getScript());
+            batchDAO.addBatchResult(batch.getBatchId(), COMPLETED, results == null ? null : results.toString());
+          } catch (ScriptException e) {
+            LOG.info("Executing batch '{}' for owner '{}'", batch.getBatchId(), batch.getOwner());
+            batchDAO.addBatchResult(batch.getBatchId(), FAILED, e.getLocalizedMessage());
+          }
+        });
+        prevBatchTime = event.getEventTime();
       }
-      // TODO make configurable
-      Thread.sleep(1000);
     }
   }
 }

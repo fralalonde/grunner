@@ -4,8 +4,6 @@ info:
   title: Grunner
   license:
     name: MIT
-#servers:
-#  - url: http://grunner.io/v1
 paths:
   /batches:
     get:
@@ -64,12 +62,33 @@ paths:
           description: Batch was not 'Pending' and could not cancelled
         404:
           description: Specified batch could not be found within user scope
+  /batches/{batchId}/results:
+    get:
+      summary: List user's batch & latest status
+      operationId: batchResults
+      parameters:
+        - name: batchId
+          in: path
+          required: true
+          description: Id of batch for which to retrieve the results
+          schema:
+            $ref: '#/components/schemas/BatchId'
+      responses:
+        200:
+          description: The batch's results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchResult"
+        404:
+          description: The batch is not in 'Completed' nor in 'Failed' status and thus has no result.
 
 components:
   schemas:
     BatchId:
       description: Unique identifier of a batch
       type: string
+      format: uuid
     BatchStatus:
       type: string
       description: Possible states of a batch
@@ -87,8 +106,20 @@ components:
         script:
           description: The script to execute
           type: string
-        owner:
-          description: Username of the submitter
+    BatchResult:
+      description: All info of a batch
+      properties:
+        id:
+          $ref: '#/components/schemas/BatchId'
+        status:
+          description: The batch's final status, either 'Completed' or 'Failed'
+          $ref: '#/components/schemas/BatchStatus'
+        timestamp:
+          description: The time at which the batch finished
+          type: string
+          format: date-time
+        result:
+          description: The result of the batch. This field may be omitted if the script returned 'null'
           type: string
     BatchStatusUpdate:
       properties:
@@ -97,7 +128,7 @@ components:
         status:
           $ref: '#/components/schemas/BatchStatus'
         timestamp:
-          description: The time at which the batch was submitted
+          description: The time at which the batch status last changed
           type: string
           format: date-time
   securitySchemes:

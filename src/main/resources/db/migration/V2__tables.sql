@@ -1,16 +1,17 @@
 CREATE TABLE GRUNNER.BATCH (
-  -- TODO ? UUID string is 36 chars long - use binary representation
-  id            VARCHAR(36) NOT NULL PRIMARY KEY,
+  batch_id      UUID NOT NULL PRIMARY KEY,
   script        VARCHAR(4096) NOT NULL,
   owner         VARCHAR(32) NOT NULL,
 );
 
 CREATE TABLE GRUNNER.BATCH_EVENT (
-  batch_id       VARCHAR(36) NOT NULL,
-  -- TODO ? use INT type and foreign key to const table of possible statuses
-  new_status   VARCHAR(10) NOT NULL,
-  event_time   TIMESTAMP NOT NULL,
-  results       VARCHAR(4096),
+  batch_id      UUID NOT NULL,
+  status        ENUM('PENDING', 'EXECUTING', 'COMPLETED', 'CANCELLED', 'FAILED') NOT NULL,
+  event_time    TIMESTAMP NOT NULL,
+  results       CLOB,
 
-  CONSTRAINT fk_batch_id FOREIGN KEY (batch_id) REFERENCES GRUNNER.BATCH
+  CONSTRAINT fk_batch_event_id FOREIGN KEY (batch_id) REFERENCES GRUNNER.BATCH
 );
+
+CREATE INDEX batch_id ON GRUNNER.BATCH_EVENT(batch_id);
+CREATE INDEX ix_event_time ON GRUNNER.BATCH_EVENT(event_time);

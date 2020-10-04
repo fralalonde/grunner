@@ -16,7 +16,7 @@ As of now, Grunner supports four operations:
 - Cancel a batch 
 - Retrieve a batch's results
 
-Batches can be in five states 
+Batches can be in one of five states:
 - Pending
 - Executing
 - Completed
@@ -66,11 +66,18 @@ This will, in order:
 - run the unit tests 
 - produce a `grunner.jar` file in the `target` sub folder  
 
+### Running integration tests
 Optionally, to perform the above steps and then additionally run the integration tests, type:
 ```
 mvn verify
 ```
-Running the integrated test suite takes long and creates a test database on the disk.  
+Running the integrated test suite takes long and creates a test database on the disk.
+
+### Dockerizing
+You can upload a Docker image of the app to docker hub (or any other repo) repo by using Maven
+```
+mvn compile jib:build -Dimage=registry.hub.docker.com/{your_repo}/grunner
+```     
 
 ## Launching
 Once the service is compiled (see previous section), at the command line, type
@@ -101,10 +108,11 @@ Otherwise, logging in gives full access to all operations.
 
 As the state of the service is backed by a database it is persistent, 
 meaning that scripts, results and errors will not be lost across server restarts. 
+Caveat: Restarting the server while batches are running will leave these batches in the 'Executing' status forever.   
  
-## Design
+## Application design
 Grunner is a primarily a Spring Boot WebMVC application.
-
+ 
 It has been designed to minimize writing custom config and code.
 Following the contract-first philosophy, it makes heavy use of code generators:
 - OpenAPI codegen for the REST API layer
@@ -122,10 +130,17 @@ Having authoritative models in a language specific to their target layer (OpenAP
 Finally, fewer remaining hand-coded classes focus on application specific behavior and layer integration, 
 reducing overall depth and complexity and facilitating correctness validation and long term maintenance.  
 
-Some possible disadvantages of this approach are:
+Some disadvantages of this approach are:
 - Harder initial developer contact (multiple languages, more complex project structure)
 - Somewhat longer build times
-- Dependence on the continued support of organizations providing the code generators 
+- Access to some features may be constrained by the generator's rigidity, requiring customization of templates. 
+
+## Storage design
+The batches are mainly stored in two tables, `batch` and `batch_event`.
+Writes to the main tables are append-only; no `update` operation is ever performed.
+Because no data is discarded, it is possible to use the database as an audit log.
+An additional table `batch_status` tracks the latest status of each batch.
+This preserves the performance of the batch dispatcher as the number of batches in the main tables increases.    
 
 ## Future
 Grunner could be made better with the implementation of some features such as:
@@ -140,7 +155,9 @@ Grunner could be made better with the implementation of some features such as:
 - Periodic cleanup of finished batches
 - Other scripting languages
 - Batch input parameters and saved model batches
-- Allow retrieving a batch script after it was submitted 
+- Allow retrieving a batch script after it was submitted
+- Use shared database for clustering of many instances  
+- Emit proper log, metrics and alerts 
 
 ## End 
 Thank you for reading.

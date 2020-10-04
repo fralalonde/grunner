@@ -9,7 +9,7 @@
 	<properties>
 		<java.version>14</java.version>
 		<springfox-version>2.9.2</springfox-version>
-		<lombok.version>1.18.12</lombok.version>
+		<org.mapstruct.version>1.4.0.Final</org.mapstruct.version>
 		<db.schema>GRUNNER</db.schema>
 		<db.url>jdbc:h2:~/${db.schema}</db.url>
 		<db.username>sa</db.username>
@@ -82,6 +82,7 @@
 				<configuration>
 					<url>${db.url}</url>
 					<user>${db.username}</user>
+					<cleanOnValidationError>true</cleanOnValidationError>
 					<locations>
 						<location>filesystem:src/main/resources/db/migration</location>
 					</locations>
@@ -144,6 +145,13 @@
 						<!-- disable pedantic try-with-resource unreferenced warnings -->
 						<arg>-Xlint:-try</arg>
 					</compilerArgs>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.mapstruct</groupId>
+							<artifactId>mapstruct-processor</artifactId>
+							<version>${org.mapstruct.version}</version>
+						</path>
+					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 
@@ -190,20 +198,20 @@
 				<version>2.5.0</version>
 				<configuration>
 					<from>
-						<image>openjdk:8-jre-slim</image>
+						<image>openjdk:14-slim</image>
 					</from>
+<!--
 					<to>
 						<image>
-							registry.hub.docker.com/springdocdemos/${project.artifactId}
+							registry.hub.docker.com/{repo_name}/${project.artifactId}
 						</image>
 					</to>
+-->
 					<container>
 						<jvmFlags>
 							<jvmFlag>-XshowSettings:vm</jvmFlag>
 							<jvmFlag>-noverify</jvmFlag>
 							<jvmFlag>-Dspring.main.lazy-initialization=true</jvmFlag>
-							<jvmFlag>-XX:TieredStopAtLevel=1</jvmFlag>
-							<jvmFlag>-XX:+UseSerialGC</jvmFlag>
 						</jvmFlags>
 					</container>
 				</configuration>
@@ -232,14 +240,13 @@
 		  <!-- enable traces in HTTP responses in dev -->
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
-			<optional>true</optional>
+			<scope>provided</scope>
 		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-configuration-processor</artifactId>
-			<optional>true</optional>
-		</dependency>
+			<scope>provided</scope>		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -254,8 +261,15 @@
 		</dependency>
 
 		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-security</artifactId>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct</artifactId>
+			<version>${org.mapstruct.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.h2database</groupId>
+			<artifactId>h2</artifactId>
+			<version>1.4.200</version>
 		</dependency>
 
 		<dependency>
@@ -269,15 +283,25 @@
 		</dependency>
 
 		<dependency>
-			<groupId>com.h2database</groupId>
-			<artifactId>h2</artifactId>
-			<version>1.4.177</version>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-undertow</artifactId>
 		</dependency>
 
 		<!-- copied from openapi-codegen -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-tomcat</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>io.springfox</groupId>

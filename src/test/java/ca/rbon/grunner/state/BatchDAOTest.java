@@ -3,7 +3,6 @@ package ca.rbon.grunner.state;
 import ca.rbon.grunner.Integration;
 import ca.rbon.grunner.db.tables.records.BatchEventRecord;
 import ca.rbon.grunner.db.tables.records.BatchRecord;
-import ca.rbon.grunner.db.tables.records.BatchRecord;
 import ca.rbon.grunner.scripting.ScriptMachine;
 import org.jooq.DSLContext;
 import org.junit.Assert;
@@ -23,9 +22,9 @@ import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
-import static ca.rbon.grunner.api.model.BatchStatus.PENDING;
 import static ca.rbon.grunner.db.Tables.BATCH;
 import static ca.rbon.grunner.db.Tables.BATCH_EVENT;
+import static ca.rbon.grunner.db.enums.BatchEventStatus.PENDING;
 import static org.mockito.Mockito.*;
 
 @JooqTest
@@ -63,8 +62,8 @@ class BatchDAOTest {
     when(transients.uuid()).thenReturn(KEYS[0]);
     when(transients.now()).thenReturn(TIMES[0]);
     batchDAO.appendBatch("user1", "script2");
-    Assert.assertEquals(db.selectFrom(BATCH).fetchOne(), new BatchRecord(KEYS[0].toString(), "script2", "user1"));
-    Assert.assertEquals(db.selectFrom(BATCH_EVENT).fetchOne(), new BatchEventRecord(KEYS[0].toString(), PENDING.name(), TIMES[0], null));
+    Assert.assertEquals(db.selectFrom(BATCH).fetchOne(), new BatchRecord(KEYS[0], "script2", "user1"));
+    Assert.assertEquals(db.selectFrom(BATCH_EVENT).fetchOne(), new BatchEventRecord(KEYS[0], PENDING, TIMES[0], null));
   }
 
   @Test
@@ -78,11 +77,11 @@ class BatchDAOTest {
 
   @Test
   void batchStatusFromLatest() {
-    batchDAO.batchStatusFromLatest("batch1");
+    batchDAO.batchEventsFromLatest(KEYS[0]);
   }
 
   @Test
   void cancelUserBatch() {
-    batchDAO.cancelUserBatch("user1", "batch1");
+    batchDAO.cancelUserBatch("user1", KEYS[0]);
   }
 }
