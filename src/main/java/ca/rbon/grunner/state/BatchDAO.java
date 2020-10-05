@@ -149,13 +149,13 @@ public class BatchDAO {
     }
     var latestStatus = batchEventsFromLatest(batchId).stream().findFirst();
     return latestStatus.map(status -> switch (status.getStatus()) {
-    case PENDING -> {
-      db.executeInsert(new BatchEventRecord(batchId, BatchEventStatus.CANCELLED, transients.now(), null));
-      yield CancelResult.OK_JOB_CANCELLED;
-    }
-    // already cancelled, just ignore for idempotence
-    case CANCELLED -> CancelResult.OK_JOB_CANCELLED;
-    default -> CancelResult.ERR_JOB_NOT_PENDING;
+      case PENDING -> {
+        db.executeInsert(new BatchEventRecord(batchId, BatchEventStatus.CANCELLED, transients.now(), null));
+        yield CancelResult.OK_JOB_CANCELLED;
+      }
+      // already cancelled, just ignore for idempotence
+      case CANCELLED -> CancelResult.OK_JOB_CANCELLED;
+      default -> CancelResult.ERR_JOB_NOT_PENDING;
     }).orElse(CancelResult.ERR_JOB_NOT_FOUND);
   }
 }

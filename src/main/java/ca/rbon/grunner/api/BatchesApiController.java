@@ -52,9 +52,9 @@ public class BatchesApiController implements BatchesApi {
     var user = request.getRemoteUser();
     var cancelResult = batchDAO.cancelUserBatch(user, batchId);
     return switch (cancelResult) {
-    case OK_JOB_CANCELLED -> ResponseEntity.noContent().build();
-    case ERR_JOB_NOT_FOUND -> throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-    case ERR_JOB_NOT_PENDING -> throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+      case OK_JOB_CANCELLED -> ResponseEntity.noContent().build();
+      case ERR_JOB_NOT_FOUND -> throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+      case ERR_JOB_NOT_PENDING -> throw new ResponseStatusException(HttpStatus.FORBIDDEN);
     };
   }
 
