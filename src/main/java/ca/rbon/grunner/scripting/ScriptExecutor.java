@@ -1,21 +1,23 @@
 package ca.rbon.grunner.scripting;
 
+import static ca.rbon.grunner.db.enums.BatchEventStatus.COMPLETED;
+import static ca.rbon.grunner.db.enums.BatchEventStatus.FAILED;
+
 import ca.rbon.grunner.state.BatchDAO;
 import ca.rbon.grunner.state.Transients;
+import java.time.OffsetDateTime;
+import javax.annotation.PostConstruct;
+import javax.script.ScriptException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Component;
 
-import javax.script.ScriptException;
-
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-
-import static ca.rbon.grunner.db.enums.BatchEventStatus.COMPLETED;
-import static ca.rbon.grunner.db.enums.BatchEventStatus.FAILED;
-
+/**
+ * Periodically scans the database for batches to execute and runs them on a
+ * threadpool.
+ */
 @Component
 public class ScriptExecutor {
 
@@ -27,39 +29,55 @@ public class ScriptExecutor {
 
   final ThreadPoolTaskExecutor pool;
 
-  private LocalDateTime prevBatchTime = LocalDateTime.ofEpochSecond(0, 0, ZoneOffset.UTC);
+  final Transients transients;
 
-  public ScriptExecutor(ScriptMachine scriptMachine, BatchDAO batchDAO, ThreadPoolTaskExecutor pool) {
+  private OffsetDateTime prevBatchTime;
+
+  public ScriptExecutor(ScriptMachine scriptMachine, BatchDAO batchDAO, ThreadPoolTaskExecutor pool, Transients transients) {
     this.scriptMachine = scriptMachine;
     this.batchDAO = batchDAO;
     this.pool = pool;
+    this.transients = transients;
   }
 
-  @Scheduled(fixedDelay = 3000)
-  public void run() throws InterruptedException {
-    while (true) {
-      var nextPending = batchDAO.nextPendingBatch(prevBatchTime);
-      if (!nextPending.isPresent()) {
-        // TODO make configurable
-        Thread.sleep(1000);
-        LOG.debug("No pending batch, waiting");
-      } else {
-        // TODO clean up optionals
-        var event = nextPending.get();
-        var batch = batchDAO.getBatch(event.getBatchId()).get();
+  @PostConstruct
+  public void init() {
+    // FIXME this ignores batches that were still PENDING before last restart
+    prevBatchTime = transients.now();
+  }
 
-        pool.execute(() -> {
-          try {
-            LOG.info("Executing batch '{}' for owner '{}'", batch.getBatchId(), batch.getOwner());
-            Object results = scriptMachine.eval(batch.getScript());
-            batchDAO.addBatchResult(batch.getBatchId(), COMPLETED, results == null ? null : results.toString());
-          } catch (ScriptException e) {
-            LOG.info("Executing batch '{}' for owner '{}'", batch.getBatchId(), batch.getOwner());
-            batchDAO.addBatchResult(batch.getBatchId(), FAILED, e.getLocalizedMessage());
-          }
-        });
-        prevBatchTime = event.getEventTime();
-      }
+  @Scheduled(fixedDelayString = "${grunner.loop.delay:3000}")
+  public void run() {
+    var nextPending = batchDAO.nextPendingBatch(prevBatchTime);
+    while (nextPending.isPresent()) {
+      var event = nextPending.get();
+      // if there's an event there _has_ to be a batch
+      var batch = batchDAO.getBatch(event.getBatchId()).get();
+
+      pool.execute(() -> {
+        try {
+          LOG.info("Executing batch '{}' for owner '{}'", batch.getBatchId(), batch.getOwner());
+          Object results = scriptMachine.eval(batch.getScript());
+          LOG.info("Batch {} completed, results {}", batch.getBatchId(), results);
+          batchDAO.addBatchResult(batch.getBatchId(), COMPLETED, results == null ? null : results.toString());
+
+        } catch (ScriptException e) {
+          LOG.debug("Execution of the script '{}' for owner '{}' resulted in an error", batch.getBatchId(), batch.getOwner(), e);
+          batchDAO.addBatchResult(batch.getBatchId(), FAILED, e.getLocalizedMessage());
+
+        } catch (SecurityException e) {
+          LOG.warn("Script attempted operation requiring elevated privileges '{}' for owner '{}'", batch.getBatchId(), batch.getOwner(), e);
+          // NOT reporting exact failure source for added security
+          batchDAO.addBatchResult(batch.getBatchId(), FAILED, "The script attempted to perform an operation outside of its privileges.");
+
+        } catch (Exception e) {
+          LOG.warn("Script execution failed '{}' for owner '{}'", batch.getBatchId(), batch.getOwner(), e);
+          // NOT reporting exact failure source for added security
+          batchDAO.addBatchResult(batch.getBatchId(), FAILED, "Script execution failed for an unspecified reason.");
+        }
+      });
+      prevBatchTime = event.getEventTime();
+      nextPending = batchDAO.nextPendingBatch(prevBatchTime);
     }
   }
 }

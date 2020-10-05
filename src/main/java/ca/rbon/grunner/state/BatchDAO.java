@@ -1,26 +1,24 @@
 package ca.rbon.grunner.state;
 
+import static ca.rbon.grunner.db.Tables.BATCH;
+import static ca.rbon.grunner.db.Tables.BATCH_EVENT;
+import static ca.rbon.grunner.db.enums.BatchEventStatus.*;
+
 import ca.rbon.grunner.db.enums.BatchEventStatus;
-import ca.rbon.grunner.db.tables.records.BatchRecord;
 import ca.rbon.grunner.db.tables.records.BatchEventRecord;
+import ca.rbon.grunner.db.tables.records.BatchRecord;
 import ca.rbon.grunner.scripting.ScriptMachine;
+import java.time.OffsetDateTime;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Stream;
+import javax.script.ScriptException;
 import org.jooq.DSLContext;
 import org.jooq.SelectSeekStep1;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-
-import javax.script.ScriptException;
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Stream;
-
-import static ca.rbon.grunner.db.Tables.BATCH;
-import static ca.rbon.grunner.db.Tables.BATCH_EVENT;
-import static ca.rbon.grunner.db.enums.BatchEventStatus.*;
 
 @Component
 public class BatchDAO {
@@ -29,7 +27,6 @@ public class BatchDAO {
 
   // TODO make configurable
   private static final int MAX_RESULT_SIZE = 4096;
-
 
   /**
    * JOOQ query builder root
@@ -73,11 +70,11 @@ public class BatchDAO {
    * Returns the user's batchs latest status
    * 
    * @param user   The user
-   * @param status If specified, only batchs with the matching latest status will be
-   *               returned, otherwise status of all batchs are returned
+   * @param status If specified, only batchs with the matching latest status will
+   *               be returned, otherwise status of all batchs are returned
    */
   @Transactional
-  public Stream<BatchEventRecord> listUserBatchLastStatus(String user, Optional<BatchEventStatus> status) {
+  public Stream<BatchEventRecord> listUserBatchLastStatus(String user) {
     // FIXME O(n) alert! SQL LATERAL might do it in one swoop but requires Postgres
     return db.select(BATCH.BATCH_ID)
         .from(BATCH)
@@ -89,7 +86,7 @@ public class BatchDAO {
    * Return a query of a batch's status starting with the latest and going back to
    * the oldest
    */
-  SelectSeekStep1<BatchEventRecord, LocalDateTime> batchEventsFromLatest(UUID batchId) {
+  SelectSeekStep1<BatchEventRecord, OffsetDateTime> batchEventsFromLatest(UUID batchId) {
     return db.selectFrom(BATCH_EVENT)
         .where(BATCH_EVENT.BATCH_ID.eq(batchId))
         .orderBy(BATCH_EVENT.EVENT_TIME.desc());
@@ -97,22 +94,23 @@ public class BatchDAO {
 
   /**
    * For executor to find next batch to run
+   * 
    * @return the batchId or Optional.empty() if no batch is pending
    */
-  public Optional<BatchEventRecord> nextPendingBatch(LocalDateTime previous) {
+  public Optional<BatchEventRecord> nextPendingBatch(OffsetDateTime previous) {
     // TODO add "restart" mode that validates the latest status of jobs
     return db.selectFrom(BATCH_EVENT)
-            .where(BATCH_EVENT.STATUS.eq(PENDING))
-            .and(BATCH_EVENT.EVENT_TIME.gt(previous))
-            // start from oldest
-            .orderBy(BATCH_EVENT.EVENT_TIME.asc())
-            .stream().findFirst();
+        .where(BATCH_EVENT.STATUS.eq(PENDING))
+        .and(BATCH_EVENT.EVENT_TIME.gt(previous))
+        // start from oldest
+        .orderBy(BATCH_EVENT.EVENT_TIME.asc())
+        .stream().findFirst();
   }
 
   public Optional<BatchRecord> getBatch(UUID batchId) {
     return db.selectFrom(BATCH)
-            .where(BATCH.BATCH_ID.eq(batchId))
-            .stream().findFirst();
+        .where(BATCH.BATCH_ID.eq(batchId))
+        .stream().findFirst();
   }
 
   public void addBatchResult(UUID batchId, BatchEventStatus status, String results) {
@@ -127,10 +125,11 @@ public class BatchDAO {
 
   public Optional<BatchEventRecord> batchResult(UUID batchId) {
     return db.selectFrom(BATCH_EVENT)
-            .where(BATCH_EVENT.BATCH_ID.eq(batchId))
-            .and(BATCH_EVENT.STATUS.in(COMPLETED, FAILED))
-            .stream()
-            .findFirst();
+        .where(BATCH_EVENT.BATCH_ID.eq(batchId))
+        .and(BATCH_EVENT.STATUS.eq(COMPLETED))
+        .or(BATCH_EVENT.STATUS.eq(FAILED))
+        .stream()
+        .findFirst();
   }
 
   /**
@@ -149,16 +148,14 @@ public class BatchDAO {
       return CancelResult.ERR_JOB_NOT_FOUND;
     }
     var latestStatus = batchEventsFromLatest(batchId).stream().findFirst();
-    return latestStatus.map(status ->
-      switch (status.getStatus()) {
-        case PENDING -> {
-          db.executeInsert(new BatchEventRecord(batchId,BatchEventStatus.CANCELLED, transients.now(), null));
-          yield CancelResult.OK_JOB_CANCELLED;
-        }
-        // already cancelled, just ignore for idempotence
-        case CANCELLED -> CancelResult.OK_JOB_CANCELLED;
-        default -> CancelResult.ERR_JOB_NOT_PENDING;
-      }
-    ).orElse(CancelResult.ERR_JOB_NOT_FOUND);
+    return latestStatus.map(status -> switch (status.getStatus()) {
+    case PENDING -> {
+      db.executeInsert(new BatchEventRecord(batchId, BatchEventStatus.CANCELLED, transients.now(), null));
+      yield CancelResult.OK_JOB_CANCELLED;
+    }
+    // already cancelled, just ignore for idempotence
+    case CANCELLED -> CancelResult.OK_JOB_CANCELLED;
+    default -> CancelResult.ERR_JOB_NOT_PENDING;
+    }).orElse(CancelResult.ERR_JOB_NOT_FOUND);
   }
 }

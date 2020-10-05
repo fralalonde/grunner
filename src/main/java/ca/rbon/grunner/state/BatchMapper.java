@@ -6,17 +6,22 @@ import ca.rbon.grunner.api.model.BatchStatusUpdate;
 import ca.rbon.grunner.db.enums.BatchEventStatus;
 import ca.rbon.grunner.db.tables.records.BatchEventRecord;
 import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
 
+/**
+ * This interface is implemented by MapStruct as {@link BatchMapperImpl}
+ */
 @Mapper(componentModel = "spring")
 public interface BatchMapper {
 
-    BatchEventStatus eventStatusFromStatus(BatchStatus status);
+  BatchEventStatus fromAPIStatus(BatchStatus status);
 
-    BatchStatus statusFromEventStatus(BatchEventStatus status);
+  BatchStatus fromDBStatus(BatchEventStatus status);
 
-    BatchResult resultFromEventRecord(BatchEventRecord status);
+  @Mapping(source = "eventTime", target = "timestamp")
+  BatchStatusUpdate fromDBEvent(BatchEventRecord status);
 
-    BatchStatusUpdate statusUpdateFromEventRecord(BatchEventRecord status);
-
+  @Mapping(source = "eventTime", target = "timestamp")
+  BatchResult fromDBResult(BatchEventRecord status);
 
 }

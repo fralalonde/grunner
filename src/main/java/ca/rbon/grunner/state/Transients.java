@@ -1,9 +1,10 @@
 package ca.rbon.grunner.state;
 
-import org.springframework.stereotype.Component;
+import static java.time.ZoneOffset.UTC;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
+import org.springframework.stereotype.Component;
 
 /**
  * Externalize transients (clock, random, etc.) to enable reproducible tests
@@ -15,8 +16,8 @@ public class Transients {
   /**
    * @return the current time
    */
-  public LocalDateTime now() {
-    return LocalDateTime.now();
+  public OffsetDateTime now() {
+    return OffsetDateTime.now(UTC);
   }
 
   /**

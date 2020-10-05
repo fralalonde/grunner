@@ -1,15 +1,21 @@
 package ca.rbon.grunner;
 
-import org.junit.experimental.categories.Category;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.experimental.categories.Category;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
 @Category(Integration.class)
-class GrunnerAppTests {
+public class GrunnerAppTests {
+
+  @BeforeClass
+  public static void init() {
+
+  }
 
   @Test
-  void contextLoads() {
+  public void contextLoads() {
     // this smoke test starts the app and initializes the spring context
   }
 

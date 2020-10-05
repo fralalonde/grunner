@@ -4,14 +4,14 @@
 	<artifactId>grunner</artifactId>
 	<packaging>jar</packaging>
 	<name>grunner</name>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>0.2-SNAPSHOT</version>
 
 	<properties>
 		<java.version>14</java.version>
 		<springfox-version>2.9.2</springfox-version>
 		<org.mapstruct.version>1.4.0.Final</org.mapstruct.version>
 		<db.schema>GRUNNER</db.schema>
-		<db.url>jdbc:h2:~/${db.schema}</db.url>
+		<db.url>jdbc:h2:${build.outputDirectory}/${db.schema}</db.url>
 		<db.username>sa</db.username>
 	</properties>
 
@@ -51,7 +51,10 @@
 							<generateModelTests>false</generateModelTests>
 							<configOptions>
 								<useOptional>true</useOptional>
-								<!--<reactive>true</reactive>-->
+								<!--
+								this service does not require async, keeping it simple
+								<reactive>true</reactive>
+								-->
 								<swaggerDocketConfig>true</swaggerDocketConfig>
 								<dateLibrary>java8</dateLibrary>
 								<interfaceOnly>true</interfaceOnly>
@@ -109,6 +112,9 @@
 						<user>${db.username}</user>
 					</jdbc>
 					<generator>
+						<generate>
+							<javaTimeTypes>true</javaTimeTypes>
+						</generate>
 						<database>
 							<includes>.*</includes>
 							<inputSchema>${db.schema}</inputSchema>
@@ -168,55 +174,37 @@
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>2.22.0</version>
-				<configuration>
-					<excludedGroups>ca.rbon.grunner.Integration</excludedGroups>
-				</configuration>
 			</plugin>
 
 			<plugin>
-				<artifactId>maven-failsafe-plugin</artifactId>
-				<version>2.22.0</version>
-				<configuration>
-					<includes>
-						<include>**/*</include>
-					</includes>
-					<groups>ca.rbon.grunner.Integration</groups>
-				</configuration>
+				<groupId>com.spotify</groupId>
+				<artifactId>dockerfile-maven-plugin</artifactId>
+				<version>1.4.13</version>
 				<executions>
 					<execution>
+						<id>default</id>
 						<goals>
-							<goal>integration-test</goal>
-							<goal>verify</goal>
+							<goal>build</goal>
 						</goals>
 					</execution>
 				</executions>
-			</plugin>
-
-			<plugin>
-				<groupId>com.google.cloud.tools</groupId>
-				<artifactId>jib-maven-plugin</artifactId>
-				<version>2.5.0</version>
 				<configuration>
-					<from>
-						<image>openjdk:14-slim</image>
-					</from>
-<!--
-					<to>
-						<image>
-							registry.hub.docker.com/{repo_name}/${project.artifactId}
-						</image>
-					</to>
--->
-					<container>
-						<jvmFlags>
-							<jvmFlag>-XshowSettings:vm</jvmFlag>
-							<jvmFlag>-noverify</jvmFlag>
-							<jvmFlag>-Dspring.main.lazy-initialization=true</jvmFlag>
-						</jvmFlags>
-					</container>
+					<repository>grunner</repository>
+					<tag>${project.version}</tag>
+					<buildArgs>
+						<JAR_FILE>${project.build.finalName}.jar</JAR_FILE>
+					</buildArgs>
 				</configuration>
 			</plugin>
 
+			<plugin>
+				<groupId>net.revelc.code</groupId>
+				<artifactId>impsort-maven-plugin</artifactId>
+				<version>1.4.1</version>
+				<configuration>
+					<removeUnused>true</removeUnused>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 
@@ -240,13 +228,14 @@
 		  <!-- enable traces in HTTP responses in dev -->
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-devtools</artifactId>
-			<scope>provided</scope>
+			<optional>true</optional>
 		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-configuration-processor</artifactId>
-			<scope>provided</scope>		</dependency>
+			<scope>provided</scope>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -269,7 +258,7 @@
 		<dependency>
 			<groupId>com.h2database</groupId>
 			<artifactId>h2</artifactId>
-			<version>1.4.200</version>
+			<version>1.4.199</version>
 		</dependency>
 
 		<dependency>
@@ -287,21 +276,10 @@
 			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-undertow</artifactId>
-		</dependency>
-
 		<!-- copied from openapi-codegen -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
-			<exclusions>
-				<exclusion>
-					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-starter-tomcat</artifactId>
-				</exclusion>
-			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>io.springfox</groupId>

@@ -1,13 +1,13 @@
-package ca.rbon.grunner.api.config;
+package ca.rbon.grunner.api;
 
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 /**
- * Home redirection to OpenAPI api documentation
+ * Root URI redirection to Swagger UI
  */
 @Controller
-public class HomeController {
+public class RootController {
 
   @RequestMapping("/")
   public String index() {

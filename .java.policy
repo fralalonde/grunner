@@ -1,0 +1,4 @@
+# this probably wont work because the codebase path needs to be absolute
+grant codeBase "file:./target/grunner-0.0.1-SNAPSHOT.jar" {
+	permission java.security.AllPermission; 
+};

@@ -8,14 +8,7 @@ paths:
   /batches:
     get:
       summary: List user's batch & latest status
-      operationId: listBatchs
-      parameters:
-        - name: status
-          in: query
-          description: Only list batches of specified status
-          required: false
-          schema:
-            $ref: '#/components/schemas/BatchStatus'
+      operationId: listBatches
       responses:
         200:
           description: The list of (matching) batches
@@ -98,18 +91,10 @@ components:
         - Completed
         - Cancelled
         - Failed
-    BatchInfo:
-      description: All info of a batch
-      properties:
-        id:
-          $ref: '#/components/schemas/BatchId'
-        script:
-          description: The script to execute
-          type: string
     BatchResult:
       description: All info of a batch
       properties:
-        id:
+        batch-id:
           $ref: '#/components/schemas/BatchId'
         status:
           description: The batch's final status, either 'Completed' or 'Failed'
@@ -118,7 +103,7 @@ components:
           description: The time at which the batch finished
           type: string
           format: date-time
-        result:
+        results:
           description: The result of the batch. This field may be omitted if the script returned 'null'
           type: string
     BatchStatusUpdate:

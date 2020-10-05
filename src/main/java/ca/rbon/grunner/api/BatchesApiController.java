@@ -1,10 +1,18 @@
 package ca.rbon.grunner.api;
 
+import static java.util.stream.Collectors.toList;
+import static org.springframework.http.ResponseEntity.accepted;
+import static org.springframework.http.ResponseEntity.ok;
+
 import ca.rbon.grunner.api.model.BatchResult;
-import ca.rbon.grunner.api.model.BatchStatus;
 import ca.rbon.grunner.api.model.BatchStatusUpdate;
 import ca.rbon.grunner.state.BatchDAO;
 import ca.rbon.grunner.state.BatchMapper;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Stream;
+import javax.script.ScriptException;
+import javax.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -13,17 +21,6 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.server.ResponseStatusException;
-
-import javax.script.ScriptException;
-import javax.validation.Valid;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
-import java.util.stream.Stream;
-
-import static java.util.stream.Collectors.toList;
-import static org.springframework.http.ResponseEntity.accepted;
-import static org.springframework.http.ResponseEntity.ok;
 
 @Controller
 @RequestMapping("${openapi.grunner.base-path:}")
@@ -37,7 +34,7 @@ public class BatchesApiController implements BatchesApi {
 
   final BatchMapper batchMapper;
 
-  public BatchesApiController(NativeWebRequest request, BatchDAO batchDAO,/* , BatchMapper batchMapper */BatchMapper batchMapper) {
+  public BatchesApiController(NativeWebRequest request, BatchDAO batchDAO, BatchMapper batchMapper) {
     this.request = request;
     this.batchDAO = batchDAO;
     this.batchMapper = batchMapper;
@@ -46,8 +43,8 @@ public class BatchesApiController implements BatchesApi {
   @Override
   public ResponseEntity<BatchResult> batchResults(UUID batchId) {
     return ok(batchDAO.batchResult(batchId)
-            .map(batchMapper::resultFromEventRecord)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
+        .map(batchMapper::fromDBResult)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
   }
 
   @Override
@@ -55,9 +52,9 @@ public class BatchesApiController implements BatchesApi {
     var user = request.getRemoteUser();
     var cancelResult = batchDAO.cancelUserBatch(user, batchId);
     return switch (cancelResult) {
-      case OK_JOB_CANCELLED -> ResponseEntity.noContent().build();
-      case ERR_JOB_NOT_FOUND -> throw new ResponseStatusException(HttpStatus.NOT_FOUND);
-      case ERR_JOB_NOT_PENDING -> throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+    case OK_JOB_CANCELLED -> ResponseEntity.noContent().build();
+    case ERR_JOB_NOT_FOUND -> throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    case ERR_JOB_NOT_PENDING -> throw new ResponseStatusException(HttpStatus.FORBIDDEN);
     };
   }
 
@@ -75,11 +72,10 @@ public class BatchesApiController implements BatchesApi {
   }
 
   @Override
-  public ResponseEntity<List<BatchStatusUpdate>> listBatchs(@Valid Optional<BatchStatus> status) {
+  public ResponseEntity<List<BatchStatusUpdate>> listBatches() {
     var user = request.getRemoteUser();
-    var batchEventStatus = status.map(batchMapper::eventStatusFromStatus);
-    return ok(batchDAO.listUserBatchLastStatus(user, batchEventStatus)
-            .flatMap(rec -> Stream.of(batchMapper.statusUpdateFromEventRecord(rec)))
-            .collect(toList()));
+    return ok(batchDAO.listUserBatchLastStatus(user)
+        .flatMap(rec -> Stream.of(batchMapper.fromDBEvent(rec)))
+        .collect(toList()));
   }
 }
