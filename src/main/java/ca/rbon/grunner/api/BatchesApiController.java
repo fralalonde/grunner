@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 import javax.script.ScriptException;
-import javax.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -41,10 +40,16 @@ public class BatchesApiController implements BatchesApi {
   }
 
   @Override
-  public ResponseEntity<BatchResult> batchResults(UUID batchId) {
-    return ok(batchDAO.batchResult(batchId)
-        .map(batchMapper::fromDBResult)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
+  public ResponseEntity<UUID> enqueueBatch(String body) {
+    try {
+      var user = request.getRemoteUser();
+      var newBatchId = batchDAO.appendBatch(user, body);
+      return accepted().body(newBatchId);
+    } catch (ScriptException se) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+          String.format("Script Error at Line [%d] Column [%d]:\n\t%s",
+              se.getLineNumber(), se.getColumnNumber(), se.getLocalizedMessage()));
+    }
   }
 
   @Override
@@ -59,23 +64,18 @@ public class BatchesApiController implements BatchesApi {
   }
 
   @Override
-  public ResponseEntity<UUID> enqueueBatch(@Valid String body) {
-    try {
-      var user = request.getRemoteUser();
-      var newBatchId = batchDAO.appendBatch(user, body);
-      return accepted().body(newBatchId);
-    } catch (ScriptException se) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-          String.format("Script Error at Line [%d] Column [%d]:\n\t%s",
-              se.getLineNumber(), se.getColumnNumber(), se.getLocalizedMessage()));
-    }
-  }
-
-  @Override
   public ResponseEntity<List<BatchStatusUpdate>> listBatches() {
     var user = request.getRemoteUser();
     return ok(batchDAO.listUserBatchLastStatus(user)
         .flatMap(rec -> Stream.of(batchMapper.fromDBEvent(rec)))
         .collect(toList()));
   }
+
+  @Override
+  public ResponseEntity<BatchResult> batchResults(UUID batchId) {
+    return ok(batchDAO.batchResult(batchId)
+        .map(batchMapper::fromDBResult)
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
+  }
+
 }
