@@ -2,13 +2,12 @@ package ca.rbon.grunner.api;
 
 import static java.time.ZoneOffset.UTC;
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 import ca.rbon.grunner.Integration;
 import ca.rbon.grunner.api.model.BatchResult;
 import ca.rbon.grunner.api.model.BatchStatus;
-import ca.rbon.grunner.db.enums.BatchEventStatus;
 import ca.rbon.grunner.db.tables.records.BatchEventRecord;
 import ca.rbon.grunner.state.BatchDAO;
 import ca.rbon.grunner.state.BatchMapper;
@@ -17,7 +16,6 @@ import java.time.OffsetDateTime;
 import java.util.Optional;
 import java.util.UUID;
 import javax.script.ScriptException;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runner.RunWith;
@@ -68,25 +66,40 @@ public class BatchesApiControllerTest {
     assertEquals(KEYS[0], response.getBody());
   }
 
-  @Ignore("not debugged yet")
   @Test
   public void batchResults() {
-    var event = new BatchEventRecord(KEYS[0], BatchEventStatus.COMPLETED, TIMES[0], "bzzz");
-    when(batchDAO.batchResult((eq(KEYS[0])))).thenReturn(Optional.of(event));
-
-    var response = template.withBasicAuth("user", "secret").getForEntity("/batches/" + KEYS[0] + "/results", BatchResult.class);
+    var event = new BatchEventRecord();
+    when(batchDAO.batchResult(eq(KEYS[0]))).thenReturn(Optional.of(event));
 
     var exp = new BatchResult();
     exp.setStatus(BatchStatus.PENDING);
     exp.setTimestamp(TIMES[0]);
     exp.setBatchId(KEYS[0]);
     exp.setResults("bzzz");
+    when(batchMapper.fromDBResult(same(event))).thenReturn(exp);
+
+    var response = template.withBasicAuth("user", "secret").getForEntity("/batches/" + KEYS[0] + "/results", BatchResult.class);
+
     assertEquals(exp, response.getBody());
     assertEquals(HttpStatus.OK, response.getStatusCode());
   }
 
   @Test
   public void cancelBatch() {
+    var event = new BatchEventRecord();
+    when(batchDAO.batchResult(eq(KEYS[0]))).thenReturn(Optional.of(event));
+
+    var exp = new BatchResult();
+    exp.setStatus(BatchStatus.PENDING);
+    exp.setTimestamp(TIMES[0]);
+    exp.setBatchId(KEYS[0]);
+    exp.setResults("bzzz");
+    when(batchMapper.fromDBResult(same(event))).thenReturn(exp);
+
+    var response = template.withBasicAuth("user", "secret").getForEntity("/batches/" + KEYS[0] + "/results", BatchResult.class);
+
+    assertEquals(exp, response.getBody());
+    assertEquals(HttpStatus.OK, response.getStatusCode());
   }
 
   @Test

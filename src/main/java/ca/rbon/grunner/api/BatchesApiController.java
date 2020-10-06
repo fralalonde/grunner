@@ -73,9 +73,11 @@ public class BatchesApiController implements BatchesApi {
 
   @Override
   public ResponseEntity<BatchResult> batchResults(UUID batchId) {
-    return ok(batchDAO.batchResult(batchId)
+    var results = batchDAO
+        .batchResult(batchId)
         .map(batchMapper::fromDBResult)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND)));
+        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    return ok(results);
   }
 
 }

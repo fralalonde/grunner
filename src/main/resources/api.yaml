@@ -37,12 +37,12 @@ paths:
                 $ref: "#/components/schemas/BatchId"
         400:
           description: The script was not syntactically valid
-  /batches/{batchId}:
+  /batches/{batch-id}:
     delete:
       summary: Cancel a batch
       operationId: cancelBatch
       parameters:
-        - name: batchId
+        - name: batch-id
           in: path
           required: true
           description: Id of batch to cancel
@@ -55,12 +55,12 @@ paths:
           description: Batch was not 'Pending' and could not cancelled
         404:
           description: Specified batch could not be found within user scope
-  /batches/{batchId}/results:
+  /batches/{batch-id}/results:
     get:
       summary: List user's batch & latest status
       operationId: batchResults
       parameters:
-        - name: batchId
+        - name: batch-id
           in: path
           required: true
           description: Id of batch for which to retrieve the results
