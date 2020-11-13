@@ -1,19 +1,19 @@
 # Grunner
 A remote Groovy Script batch execution service. 
 
-_Batch: a computer operation whose expected execution time is expected to exceed the user's willingness to wait for it to finish._
+_Batch: a computer operation whose execution time is expected to exceed the user's willingness to wait._
 
 **NOT SECURED FOR PRODUCTION**
 ---
 
 # Features
 _Grunner_ is an HTTP service that allows sending Groovy scripts to a remote server for batch execution.
-As the service runs the scripts, results are preserved for later retrieval.   
+As the service runs the scripts, results are preserved for later retrieval.
 
 As of now, Grunner supports four operations:
 
 * Enqueue a new batch
-* List all batches status, with optional status filter
+* List all batches latest status
 * Cancel a batch 
 * Retrieve a batch's results
 
@@ -72,7 +72,7 @@ This will, in order:
 * Compile everything
 * Run the unit tests 
 * Produce a `grunner.jar` file in the `target` sub folder
-* Build a Docker image from the 
+* Build a Docker image
 * Run the integrated test suite  
 
 ## Launching
@@ -93,12 +93,12 @@ Once launched, the service will be listening on port 8080 (unsecured http).
 
 In additon to a HTTP REST API for programmatic control, 
 the service is human-accessible using the built-in Swagger Web UI.
-The Swagger UI is now yours to explore and should be accessible at
+The Swagger UI is yours to explore and should be accessible at
 ```
 http://localhost:8080/
 ```
 
-Each REST exchange performed in the UI also produces a sample CLI command.
+Each REST exchange performed in the UI also produces an equivalent `curl` command.
 These commands can be helpful when composing execution scripts.
 
 All usage of the service's interfaces require a login through HTTP Basic auth. 
@@ -108,7 +108,8 @@ Otherwise, logging in gives full access to all operations.
 
 As the state of the service is backed by a database it is persistent, 
 meaning that scripts, results and errors will not be lost across server restarts. 
-Caveat: Restarting the server while batches are running will leave these batches in the 'Executing' status forever.   
+Caveat: Currently, restarting the server while batches are running will 
+leave these batches in the 'Executing' status forever.   
  
 ## Application design
 Grunner is a primarily a Spring Boot WebMVC application.
@@ -157,7 +158,7 @@ In this regard, the development and testing of a proper sandboxing mechanism was
 research work that would be outside the scope of the project. (If you know how to do this, let me know. I _tried_.)
 
 A possibly better, more pragmatic alternative to JVM sandboxing would be usage of Docker container limits, 
-which would also limit system resource utlisation, at the cost of some overhead if it was to be performed per-batch.   
+which would also limit system resource utilisation, at the cost of some overhead if it was to be performed per-batch.   
 
 ## Future
 Grunner could be made better with the implementation of some features such as:
