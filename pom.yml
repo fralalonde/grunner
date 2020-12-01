@@ -1,0 +1,174 @@
+modelVersion: 4.0.0
+parent:
+  artifactId: spring-boot-starter-parent
+  groupId: org.springframework.boot
+  version: 2.3.4.RELEASE
+groupId: ca.rbon
+artifactId: grunner
+version: 0.2-SNAPSHOT
+packaging: jar
+name: grunner
+properties:
+  springfox-version: 2.9.2
+  db.url: 'jdbc:h2:${project.build.outputDirectory}/${db.schema}'
+  java.version: 14
+  org.mapstruct.version: 1.4.0.Final
+  db.username: sa
+  db.schema: GRUNNER
+dependencyManagement:
+  dependencies:
+    - groupId: org.codehaus.groovy
+      artifactId: groovy-all
+      version: 3.0.6
+      type: pom
+      scope: import
+
+dependencies:
+  - { groupId: org.springframework.boot, artifactId: spring-boot-devtools, optional: true }
+  - { groupId: org.springframework.boot, artifactId: spring-boot-configuration-processor, scope: provided }
+  - { groupId: org.springframework.boot, artifactId: spring-boot-starter-test, scope: test }
+  - { groupId: org.springframework.boot, artifactId: spring-boot-starter-jooq }
+  - { groupId: org.springframework.boot, artifactId: spring-boot-starter-security }
+  - { groupId: org.springframework.boot, artifactId: spring-boot-starter-web }
+  - { groupId: org.springframework.security, artifactId: spring-security-test, scope: test }
+  - { groupId: org.codehaus.groovy, artifactId: groovy-jsr223 }
+  - { groupId: org.mapstruct, artifactId: mapstruct, version: '${org.mapstruct.version}' }
+  - { groupId: com.h2database, artifactId: h2, version: 1.4.199 }
+  - { groupId: org.flywaydb, artifactId: flyway-core }
+  - { groupId: io.springfox, artifactId: springfox-swagger2, version: '${springfox-version}' }
+  - { groupId: io.springfox, artifactId: springfox-swagger-ui, version: '${springfox-version}' }
+  - { groupId: javax.xml.bind, artifactId: jaxb-api, version: 2.2.11 }
+  - { groupId: com.fasterxml.jackson.datatype, artifactId: jackson-datatype-jsr310 }
+  - { groupId: org.openapitools, artifactId: jackson-databind-nullable, version: 0.1.0 }
+  - { groupId: javax.validation, artifactId: validation-api }
+
+build:
+  plugins:
+    - groupId: org.springframework.boot
+      artifactId: spring-boot-maven-plugin
+      executions:
+        - goals:
+            - repackage
+          id: default
+          inherited: true
+          priority: 0
+    - groupId: org.openapitools
+      artifactId: openapi-generator-maven-plugin
+      version: 4.3.1
+      executions:
+        - configuration:
+            inputSpec: '${project.basedir}/src/main/resources/api.yaml'
+            generatorName: spring
+            generateApiTests: false
+            generateModelTests: false
+            configOptions:
+              useOptional: true
+              swaggerDocketConfig: true
+              dateLibrary: java8
+              interfaceOnly: true
+              skipDefaultInterface: true
+              apiPackage: ca.rbon.grunner.api
+              modelPackage: ca.rbon.grunner.api.model
+              configPackage: ca.rbon.grunner.api.config
+          goals:
+            - generate
+          id: default
+          inherited: true
+          priority: 0
+    - groupId: org.flywaydb
+      artifactId: flyway-maven-plugin
+      version: 6.5.3
+      configuration:
+        url: '${db.url}'
+        user: '${db.username}'
+        cleanOnValidationError: true
+        locations:
+          - 'filesystem:src/main/resources/db/migration'
+      executions:
+        - goals:
+            - migrate
+          id: default
+          inherited: true
+          phase: generate-sources
+          priority: 0
+    - groupId: org.jooq
+      artifactId: jooq-codegen-maven
+      version: 3.13.4
+      configuration:
+        jdbc:
+          url: '${db.url}'
+          user: '${db.username}'
+        generator:
+          generate:
+            javaTimeTypes: true
+          database:
+            includes: .*
+            inputSchema: '${db.schema}'
+          target:
+            packageName: ca.rbon.grunner.db
+            directory: target/generated-sources/jooq-h2
+      executions:
+        - goals:
+            - generate
+          id: default
+          inherited: true
+          phase: generate-sources
+          priority: 0
+    - groupId: org.apache.maven.plugins
+      artifactId: maven-compiler-plugin
+      version: 3.8.1
+      configuration:
+        source: '${java.version}'
+        target: '${java.version}'
+        showDeprecation: true
+        compilerArgs:
+          arg: '-Xlint:-try'
+        annotationProcessorPaths:
+          path:
+            groupId: org.mapstruct
+            artifactId: mapstruct-processor
+            version: '${org.mapstruct.version}'
+    - groupId: net.revelc.code.formatter
+      artifactId: formatter-maven-plugin
+      version: 2.12.1
+      configuration:
+        configFile: '${basedir}/formatter.xml'
+    - groupId: org.apache.maven.plugins
+      artifactId: maven-surefire-plugin
+      version: 2.22.0
+      configuration:
+        excludedGroups: ca.rbon.grunner.Integration
+    - groupId: org.apache.maven.plugins
+      artifactId: maven-failsafe-plugin
+      version: 2.22.0
+      configuration:
+        includes:
+          - '**/*'
+        groups: ca.rbon.grunner.Integration
+      executions:
+        - goals:
+            - integration-test
+            - verify
+          id: default
+          inherited: true
+          priority: 0
+    - groupId: com.spotify
+      artifactId: dockerfile-maven-plugin
+      version: 1.4.13
+      configuration:
+        repository: grunner
+        tag: '${project.version}'
+        buildArgs:
+          JAR_FILE: '${project.build.finalName}.jar'
+      executions:
+        - goals:
+            - build
+          id: default
+          inherited: true
+          priority: 0
+    - groupId: net.revelc.code
+      artifactId: impsort-maven-plugin
+      version: 1.4.1
+      configuration:
+        removeUnused: true
+childProjectUrlInheritAppendPath: true
