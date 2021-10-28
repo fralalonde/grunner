@@ -1,5 +1,5 @@
-# Grunner
-A remote Groovy Script batch execution service. 
+# Grunner (an interview exercice)
+A remote Groovy Script batch execution service using Spring Boot.
 
 _Batch: a computer operation whose execution time is expected to exceed the user's willingness to wait._
 
